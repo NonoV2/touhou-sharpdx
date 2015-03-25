@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace touhou_test
 {
-    class PhysicSimulation // TODO fix issue and implement again...
+    class PhysicSimulation // TODO fix issues and implement again... Maybe later when things start to get functional.
     {
 
         public GameLogic gl;

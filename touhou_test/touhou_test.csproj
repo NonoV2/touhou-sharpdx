@@ -99,6 +99,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BulletObject.cs" />
+    <Compile Include="EnemyObject.cs" />
     <Compile Include="Game.cs" />
     <Compile Include="GameLogic.cs" />
     <Compile Include="GameObject.cs" />

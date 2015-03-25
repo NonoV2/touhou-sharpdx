@@ -18,6 +18,7 @@ namespace touhou_test
         public enum GAMESTATE : int { MENU = 0, PLAYING = 1, DEMO = 2 };
         public int gameState = (int)GAMESTATE.MENU;
 
+        public int fps = 0;
         public int menuOption = 0;
         public int collision = 0;
         public bool hitboxDisplayNew = false;
@@ -29,46 +30,61 @@ namespace touhou_test
         public bool printHelpLab = false;
         public bool visibleTextureCountIsActive = false;
 
-        public int frameLogicCount = 0;
-        public List<bool> timingEventDone;
-        public int bulletCount = 0;
         public bool focus = false;
-        public float delay = 0;
-        public float acceleration = 0;
+        public bool fire = false;
+        public int frameCountFire = 0;
+        public int playerBulletCount = 0;
+        public float bulletDelay = 0f;
+
+        //public List<bool> timingEventDone;
+        //public int frameLogicCount = 0;
+        //public int bulletCount = 0;
+        //public float delay = 0;
+        //public float acceleration = 0;
 
         public List<GameObject> listBackgroundObject;
+
         public List<GameObject> listPlayerObject;
+        public List<BulletObject> listPlayerBulletObject;
         public List<GameObject> listGameObject;
         public List<BulletObject> listBulletObject;
-        public List<GameObject> listHitbox;
+
         public List<GameObject> collisionObject;
+        public List<GameObjectDuo> collisionEnemy;
+
+        public Level level;
 
         private void cleanGameState()
         {
             // Object cleaning
             listPlayerObject.Clear();
             listBulletObject.Clear();
-            timingEventDone.Clear();
+            listPlayerBulletObject.Clear();
             listBackgroundObject.Clear();
             listGameObject.Clear();
-            listHitbox.Clear();
             collisionObject.Clear();
+            collisionEnemy.Clear();
 
             // Global variables cleaning
+            fps = 0;
             collision = 0;
             hitboxDisplayNew = false;
             cameraOriginX = 0;
             cameraOriginY = 0;
             printFPS = false;
             wireframe = false;
-            frameLogicCount = 0;
-            bulletCount = 0;
             focus = false;
-            delay = 0;
             printHelp = false;
             printHelpLab = false;
-            acceleration = 0;
             visibleTextureCountIsActive = false;
+
+            //frameLogicCount = 0;
+            //bulletCount = 0;
+            //delay = 0;
+            //acceleration = 0;
+
+            // Reinitialization of stuff
+            level = new Level(this);
 
             // Unknown due to saving states
             //menuOption = 0;
@@ -83,13 +99,16 @@ namespace touhou_test
         public void init() {
 
             //init structure lists
-            timingEventDone = new List<bool>();
             listBackgroundObject = new List<GameObject>();
             listPlayerObject = new List<GameObject>();
+            listPlayerBulletObject = new List<BulletObject>();
             listGameObject = new List<GameObject>();
             listBulletObject = new List<BulletObject>();
-            listHitbox = new List<GameObject>();
             collisionObject = new List<GameObject>();
+            collisionEnemy = new List<GameObjectDuo>();
+
+            //init levels
+            level = new Level(this);
 
             //launch first menu
             //if (g.graphicLib == (int)Game.GRAPHIC.SLIMDX) loadMainMenuGameState();
@@ -101,28 +120,34 @@ namespace touhou_test
 
         public void drawAllGameObjects()
         {
+            SharpDX.Color color = new SharpDX.Color(new SharpDX.Vector4(1f, 1f, 1f, 1f));     // last float in vector4 is alpha used for transarency
+            SharpDX.Color colorT75 = new SharpDX.Color(new SharpDX.Vector4(1f, 1f, 1f, 0.75f)); // 75% opacity
+
             //begin drawing
             if (wireframe) ghSharpDX.batch.Batch.Begin(SpriteSortMode.Immediate, ghSharpDX.bsToolkit, ghSharpDX.ssToolkit, null, ghSharpDX.rsToolkitWireframe);
             else ghSharpDX.batch.Batch.Begin(SpriteSortMode.Immediate, ghSharpDX.bsToolkit, ghSharpDX.ssToolkit, null, ghSharpDX.rsToolkit);
             //draw
-            //if (listGameObject == null) return;
+            
+            int bgCount = 0;
             foreach (GameObject go in listBackgroundObject)
             {
-                ghSharpDX.drawGameObject(go);
+                if (bgCount == 0) ghSharpDX.drawGameObject(go, color, false);
+                else ghSharpDX.drawGameObject(go, color, true);
+                bgCount++;
             }
-            foreach (GameObject go in listGameObject)
-            {
-                ghSharpDX.drawGameObject(go);
-            }
-            foreach (GameObject go in listPlayerObject) ghSharpDX.drawGameObject(go);
+            foreach (BulletObject bo in listPlayerBulletObject) ghSharpDX.drawBulletObject(bo, colorT75, false);
+            foreach (GameObject go in listGameObject) ghSharpDX.drawGameObject(go, color, false);
+            foreach (GameObject go in listPlayerObject) ghSharpDX.drawGameObject(go, color, false);
+            foreach (BulletObject bo in listBulletObject) ghSharpDX.drawBulletObject(bo, colorT75, false);
+            
 
-            foreach (BulletObject bo in listBulletObject) ghSharpDX.drawGameObject(bo);
             if (hitboxDisplayNew)
             {
-                foreach (GameObject go in listHitbox)
-                {
-                    ghSharpDX.drawGameObject(go);
-                }
+                foreach (GameObject go in listPlayerBulletObject) { ghSharpDX.drawHitboxObject(go); }
+                foreach (GameObject go in listGameObject) { ghSharpDX.drawHitboxObject(go); }
+                foreach (GameObject go in listPlayerObject) { ghSharpDX.drawHitboxObject(go); }
+                foreach (GameObject go in listBulletObject) { ghSharpDX.drawHitboxObject(go); }
+                
             }
 
             drawAllText();
@@ -141,15 +166,11 @@ namespace touhou_test
 
             if (gameState == (int)GAMESTATE.MENU)
             {
-                
                 string danmaku = "Danmaku Demo";
                 string lab = "Technical Test Demo";
                 string quit = "Quit";
-                
-                //ghSharpDX.batch.DrawString(danmaku, 100, 400, SharpDX.Color.Black);
                 ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, danmaku, new SharpDX.Vector2(100 * wFactor, 400 * hFactor), SharpDX.Color.Black,
                                0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
-                //ghSharpDX.batch.DrawString(lab, 100, 450, SharpDX.Color.Black);
                 ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, lab, new SharpDX.Vector2(100 * wFactor, 450 * hFactor), SharpDX.Color.Black,
                                0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
                 ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, quit, new SharpDX.Vector2(100 * wFactor, 500 * hFactor), SharpDX.Color.Black,
@@ -177,9 +198,6 @@ namespace touhou_test
                 ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, msg, new SharpDX.Vector2(16 * wFactor, 16 * hFactor), SharpDX.Color.PaleGreen,
                                0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
             }
-            //ghSharpDX.batch.DrawString("FPS: " + ghSharpDX.fpsCounter.FPS + " Current Time " + DateTime.Now.ToString(),
-            //                                         16, 16, SharpDX.Color.PaleGreen);
-            
             if (printHelp)
             {
                 string msg = "--- Pause & Help --- \n" +
@@ -187,11 +205,9 @@ namespace touhou_test
                              "Focus - Hold Shift \n" +
                              "Toggle FPS and Time - F \n" +
                              "Toggle Hitboxes - Num5 \n" +
-                             "Return To Title Screen - Enter";
-                //ghSharpDX.batch.DrawString(msg, 16, 430, SharpDX.Color.White);
+                             "Return To Title Screen - Enter";                
                 ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, msg, new SharpDX.Vector2(16 * wFactor, 430 * hFactor), SharpDX.Color.White,
                                0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
-                //ghSharpDX.batch.DrawString(msg, 13, 427, SharpDX.Color.Black);
             }
             if (printHelpLab)
             {
@@ -207,18 +223,13 @@ namespace touhou_test
                              "Return To Title Screen - Enter";
                 ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, msg, new SharpDX.Vector2(16 * wFactor, 345 * hFactor), SharpDX.Color.White,
                                0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
-                //ghSharpDX.batch.DrawString(msg, 16, 345, SharpDX.Color.White);
-                //ghSharpDX.batch.DrawString(msg, 13, 342, SharpDX.Color.Black);
             }
             if (visibleTextureCountIsActive)
             {
                 int i = 0;
                 foreach (GameObject go in listPlayerObject) if (go.isVisible) i++;
                 foreach (GameObject go in listGameObject) if (go.isVisible) i++;
-                if (hitboxDisplayNew) foreach (GameObject go in listHitbox) if (go.isVisible) i++;
-                //Console.WriteLine("Number of visible Objects: " + i);
                 string msg = "Number of Rendered Textures: " + i;
-                //ghSharpDX.batch.DrawString(msg, 16, 40, SharpDX.Color.DarkOrchid);
                 ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, msg, new SharpDX.Vector2(16 * wFactor, 40 * hFactor), SharpDX.Color.DarkOrchid,
                                0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
             }
@@ -226,7 +237,6 @@ namespace touhou_test
 
         public void logicUpdate()
         {
-
             switch (gameState)
             {
                 case (int)GAMESTATE.MENU:
@@ -241,7 +251,6 @@ namespace touhou_test
                 default:
                     break;
             }
-
         }
 
 
@@ -328,6 +337,7 @@ namespace touhou_test
             }
 
             // hitbox base data creation + original object final coords update
+            /*
             foreach (GameObject go in listPlayerObject)
             {
                 go.updateFinalOriginAndCoord();
@@ -340,15 +350,12 @@ namespace touhou_test
                 GameObject newGo = new GameObject(ghSharpDX.resourceViewHitboxGreen, this);
                 listHitbox.Add(newGo);
             }
+            */ 
         }
 
         private void demoLogicUpdate()
         {
-            //global state checks
-            int fps = 60; // ghSharpDX.fpsCounter.FPS
-            checkCollision(listPlayerObject[0]);
-
-            //input and action checks
+            // Handling pause the hard way
             if (ihSharpDX.kEnter && !ihSharpDX.kEnterOnce)
             {
                 ihSharpDX.kEnterOnce = true;
@@ -365,8 +372,13 @@ namespace touhou_test
                 ihSharpDX.kEscapeOnce = true;
                 printHelpLab = !printHelpLab;
             }
-            if (printHelpLab) return; // Handling pause the hard way
+            if (printHelpLab) return; 
 
+            //global state checks
+            int fps = 60; // ghSharpDX.fpsCounter.FPS
+            checkCollision(listPlayerObject[0]);
+
+            //input and action checks
             if (ihSharpDX.kUp)
             {
                 //acc = acc + (20f / (float)avgFPS);
@@ -449,116 +461,27 @@ namespace touhou_test
             }
 
             //additional checks
-            if (hitboxDisplayNew) //XXX: Fix last index of hitbox gameobject which is not treated...
-            {
-                // Player Case
-                if (collisionObject.Count > 0)
-                {
-                    listHitbox[0].resourceViewSharpDX = ghSharpDX.resourceViewHitboxRed;
-                }
-                else
-                {
-                    listHitbox[0].resourceViewSharpDX = ghSharpDX.resourceViewHitboxGreen;
-                }
-                listHitbox[0].deepCopyFrom(listPlayerObject[0]);
-                listHitbox[0].size = (listPlayerObject[0].txPointerH / listHitbox[0].txPointerH) * listPlayerObject[0].size * listPlayerObject[0].hitboxFactor;
+            if (hitboxDisplayNew) updateHitboxData();
 
-                // All Objects Cases
-                for (int i = 0; i < listGameObject.Count; i++)
-                {
-                    if (collisionObject.Contains(listGameObject[i]))
-                    {
-                        listHitbox[i + listPlayerObject.Count].resourceViewSharpDX = ghSharpDX.resourceViewHitboxRed;
-                    }
-                    else
-                    {
-                        listHitbox[i + listPlayerObject.Count].resourceViewSharpDX = ghSharpDX.resourceViewHitboxGreen;
-                    }
-                    listHitbox[i + listPlayerObject.Count].deepCopyFrom(listGameObject[i]);
-                    listHitbox[i + listPlayerObject.Count].size = (listGameObject[i].txPointerH / listHitbox[i + listPlayerObject.Count].txPointerH) * listGameObject[i].size * listGameObject[i].hitboxFactor;
-                    //Console.WriteLine("Size = " + listHitbox[i].size);
-
-                }
-            }
 
         }
 
 
         private void loadPlayingGameState()
         {
-            //Initialize Timings Events
-            for (int i = 0; i < 100; i++) timingEventDone.Add(false);
 
-            //LoadBackground
-            listBackgroundObject.Add(new GameObject(ghSharpDX.resourceViewBackground, this));
-            listBackgroundObject[0].originY = 0f;
-            //listBackgroundObject[0].alwaysVisible = true;
+            level.loadStage01();
 
-            listBackgroundObject.Add(new GameObject(ghSharpDX.resourceViewBackground, this));
-            listBackgroundObject[1].originY = -1800f;
-            //listBackgroundObject[1].alwaysVisible = true;
-            
-
-            //Player = 0, 1 = player's hitbox
-            listPlayerObject.Add(new GameObject(ghSharpDX.resourceViewMokou, this));
-            listPlayerObject[0].size = 0.5f;
-            listPlayerObject[0].originX = 0f;
-            listPlayerObject[0].originY = 220f;
-
-            //player hitbox
-            listPlayerObject.Add(new GameObject(ghSharpDX.resourceViewFocusHitbox, this));
-            listPlayerObject[1].hitboxFactor = 0.5f;
-
-            //enemy
-            listGameObject.Add(new GameObject(ghSharpDX.resourceViewKaguya, this));
-            listGameObject[0].size = 0.5f;
-            listGameObject[0].hitboxFactor = 0.4f;
-            listGameObject[0].offsetY = -8;
-            listGameObject[0].originX = 0f;
-            listGameObject[0].originY = -500f;
-
-            //bullets
-            for (int i = 0; i < 2000; i++)
-            {
-                listBulletObject.Add(new BulletObject(ghSharpDX.resourceViewBullet00, this));
-                //listBulletObject[i].originX = 0f;
-                //listBulletObject[i].originY = 0f;
-                //listBulletObject[i].size = 5f;
-                //listBulletObject[i].hitboxFactor = 0.5f;
-            }
-            
-
-            // hitbox base data creation + original object final coords update
-            foreach (GameObject go in listPlayerObject)
-            {
-                GameObject newGo = new GameObject(ghSharpDX.resourceViewHitboxGreen, this);
-                listHitbox.Add(newGo);
-            }
-            foreach (GameObject go in listGameObject)
-            {
-                GameObject newGo = new GameObject(ghSharpDX.resourceViewHitboxGreen, this);
-                listHitbox.Add(newGo);
-            }
-            foreach (BulletObject bo in listBulletObject)
-            {
-                GameObject newGo = new GameObject(ghSharpDX.resourceViewHitboxGreen, this);
-                newGo.alwaysHidden = true;
-                listHitbox.Add(newGo);
-            }
         }
 
         private void playingLogicUpdate() // TODO: Level Design Implementation for multilevels
         {
-            //check logic states
-            checkCollisionFull(listPlayerObject[1]);
-            float playerSpeed = 240f;
-            focus = false;
-            listPlayerObject[1].alwaysHidden = true;
-            listPlayerObject[0].speedY = 0f;
-            listPlayerObject[0].speedX = 0f;
-            int fps = 60; // ghSharpDX.fpsCounter.FPS;
-
-            //input and action checks
+            // Handling pause the hard way
+            if (ihSharpDX.kEscape && !ihSharpDX.kEscapeOnce)
+            {
+                ihSharpDX.kEscapeOnce = true;
+                printHelp = !printHelp;
+            }
             if (ihSharpDX.kEnter && !ihSharpDX.kEnterOnce)
             {
                 ihSharpDX.kEnterOnce = true;
@@ -570,47 +493,19 @@ namespace touhou_test
                     return;
                 }
             }
-            if (ihSharpDX.kEscape && !ihSharpDX.kEscapeOnce)
-            {
-                ihSharpDX.kEscapeOnce = true;
-                printHelp = !printHelp;
-            }
-            if (printHelp) return; // Handling pause the hard way
+            if (printHelp) return; 
 
-            if (ihSharpDX.kShift) // Focus
-            {
-                focus = true;
-                playerSpeed = 120f;
-                listPlayerObject[1].alwaysHidden = false;
-            }
-            if (ihSharpDX.kUp)
-            {
+            //Global Logic
+            checkCollisionFull(listPlayerObject[1]);
+            checkCollisionPlayerBullet();
 
-                if (listPlayerObject[0].originY > -300) listPlayerObject[0].originY = listPlayerObject[0].originY - (playerSpeed / fps);
-                
-            }
+            //Initial Variables
+            float playerSpeed = 240f;
+            focus = false;
+            listPlayerObject[1].alwaysHidden = true;
+            fps = 60; // ghSharpDX.fpsCounter.FPS; // For stability purposes, might change if no v-sync
 
-            if (ihSharpDX.kDown)
-            {
-
-                if (listPlayerObject[0].originY < 300) listPlayerObject[0].originY = listPlayerObject[0].originY + (playerSpeed / fps);
-                
-            }
-
-            if (ihSharpDX.kRight)
-            {
-
-                if (listPlayerObject[0].originX < 400) listPlayerObject[0].originX = listPlayerObject[0].originX + (playerSpeed / fps);
-                
-            }
-
-            if (ihSharpDX.kLeft)
-            {
-
-                if (listPlayerObject[0].originX > -400) listPlayerObject[0].originX = listPlayerObject[0].originX - (playerSpeed / fps);
-                
-            }
-
+            //input and action checks
             if (ihSharpDX.kF && !ihSharpDX.kFOnce)
             {
                 ihSharpDX.kFOnce = true;
@@ -621,8 +516,65 @@ namespace touhou_test
                 ihSharpDX.kNumpad5Once = true;
                 hitboxDisplayNew = !hitboxDisplayNew;
             }
-            
 
+            if (ihSharpDX.kShift) // Focus
+            {
+                focus = true;
+                playerSpeed = playerSpeed / 2f;
+                listPlayerObject[1].alwaysHidden = false;
+            }
+            if (ihSharpDX.kUp)
+            {
+
+                if (listPlayerObject[0].originY > -300) listPlayerObject[0].originY = listPlayerObject[0].originY - (playerSpeed / fps);
+                
+            }
+            if (ihSharpDX.kDown)
+            {
+
+                if (listPlayerObject[0].originY < 300) listPlayerObject[0].originY = listPlayerObject[0].originY + (playerSpeed / fps);
+                
+            }
+            if (ihSharpDX.kRight)
+            {
+
+                if (listPlayerObject[0].originX < 400) listPlayerObject[0].originX = listPlayerObject[0].originX + (playerSpeed / fps);
+                
+            }
+            if (ihSharpDX.kLeft)
+            {
+
+                if (listPlayerObject[0].originX > -400) listPlayerObject[0].originX = listPlayerObject[0].originX - (playerSpeed / fps);
+                
+            }
+            if (ihSharpDX.kY)
+            {
+                if (frameCountFire > ((0.1+bulletDelay) * fps))
+                {
+                    frameCountFire = 0;
+                    listPlayerBulletObject[playerBulletCount].isActive = true;
+                    listPlayerBulletObject[playerBulletCount].originX = listPlayerObject[0].originX;
+                    listPlayerBulletObject[playerBulletCount].originY = listPlayerObject[0].originY;
+                    listPlayerBulletObject[playerBulletCount].trackPlayerData(listPlayerObject[0].originX, listPlayerObject[0].originY - 10); //going up
+                    if (focus)
+                    {
+                        bulletDelay = 1.2f;
+                        listPlayerBulletObject[playerBulletCount].speed = 120f;
+                        listPlayerBulletObject[playerBulletCount].resourceViewSharpDX = ghSharpDX.resourceViewPlayerBullet01;
+                    }
+                    else
+                    {
+                        bulletDelay = 0f;
+                        listPlayerBulletObject[playerBulletCount].speed = 360f;
+                        listPlayerBulletObject[playerBulletCount].resourceViewSharpDX = ghSharpDX.resourceViewPlayerBullet00;
+                    }
+                    listPlayerBulletObject[playerBulletCount].updateTextureSizeDescription();
+
+                    if (playerBulletCount >= listPlayerBulletObject.Count - 1) playerBulletCount = 0;
+                    else playerBulletCount++;
+                }
+            }
+            
             //permanent updates
             listPlayerObject[1].originX = listPlayerObject[0].originX + 2; //update focus hitbox into player sprite
             listPlayerObject[1].originY = listPlayerObject[0].originY + 8;
@@ -630,145 +582,118 @@ namespace touhou_test
             //scrolling background
             listBackgroundObject[0].originY = listBackgroundObject[0].originY + (60f / fps);
             listBackgroundObject[1].originY = listBackgroundObject[1].originY + (60f / fps);
-            if (listBackgroundObject[0].originY > 1800) listBackgroundObject[0].originY = -1800f;
-            if (listBackgroundObject[1].originY > 1800) listBackgroundObject[1].originY = -1800f;
+            if (listBackgroundObject[0].originY > 1799) listBackgroundObject[0].originY = -1799f;
+            if (listBackgroundObject[1].originY > 1799) listBackgroundObject[1].originY = -1799f;
 
-            //Bullet Logic, must be applied before Timing logic
-            if (timingEventDone[0])
+            //Bullet Logic, must be applied before Timing logic/level logic
+            foreach (BulletObject bo in listBulletObject)
             {
-                foreach (BulletObject bo in listBulletObject)
-                {
-                    if (bo.isActive) bo.follow();
-                }
+                bo.isHitboxActive = bo.isActive;
+                if (bo.isActive) bo.follow();
+            }
+            foreach (BulletObject bo in listPlayerBulletObject)
+            {
+                bo.isHitboxActive = bo.isActive;
+                if (bo.isActive) bo.follow();
             }
 
-            //Timing Logic
-            if (!timingEventDone[0] && frameLogicCount > 1 * fps)
-            {
-                //listGameObject[0].originX = 0f;
-                listGameObject[0].originY = listGameObject[0].originY + ((100f - acceleration) / fps);
-                if (listGameObject[0].originY > -200)
-                {
-                    listGameObject[0].originY = -200;
-                    timingEventDone[0] = true;
-                    frameLogicCount = 0;
-                    acceleration = 0f;
-                }
-                if (listGameObject[0].originY > -250)
-                {
-                    acceleration = acceleration + (100f / fps);
-                    if (acceleration > 80f) { acceleration = 90f; }
-                }
-                
-            }
-            if (timingEventDone[0] && !timingEventDone[1] && frameLogicCount > 1.75f * fps)
-            {
-                timingEventDone[1] = true;
-                frameLogicCount = 0;
-            }
-            if (timingEventDone[1] && !timingEventDone[2] && frameLogicCount > (0.5f + delay) * fps)
-            {
-                int bulletBatch = 20;
-                for (int i = 0; i < bulletBatch; i++)
-                {
-                    listBulletObject[bulletCount + i].originX = listGameObject[0].originX - (20 * bulletBatch) + (i * 4 * bulletBatch);
-                    listBulletObject[bulletCount + i].originY = listGameObject[0].originY - 30;
-                    listBulletObject[bulletCount + i].trackPlayerData(listPlayerObject[1].originX - (20 * bulletBatch) + (i * 4 * bulletBatch), listPlayerObject[1].originY);
-                    listBulletObject[bulletCount + i].isActive = true;
-                    listBulletObject[bulletCount + i].size = 4f;
-                    listBulletObject[bulletCount + i].speed = 70f;
-                    listHitbox[listPlayerObject.Count + listGameObject.Count + bulletCount + i].alwaysHidden = false;
-                }
-                
+            //Level Logic
+            level.logicStage01();
 
-                if ((bulletCount / bulletBatch) % 10 == 9)
-                {
-                    delay = 2.0f;
-                }
-                else
-                {
-                    delay = 0f;
-                }
-                if ((bulletCount / bulletBatch) % 20 > 9)
-                {
-                    for (int i = 0; i < bulletBatch; i++)
-                    {
-                        listBulletObject[bulletCount + i].speed = 200f;
-                        listBulletObject[bulletCount + i].size = 1f;
-                    }
-                }
+            //hitbox debug display
+            if (hitboxDisplayNew) updateHitboxData();
 
-                if (bulletCount < (listBulletObject.Count - bulletBatch))
-                {
-                    bulletCount = bulletCount + bulletBatch;
-                }
-                else
-                {
-                    bulletCount = 0;
-                    //delay = 0.5f;
-                    //timingEventDone[1] = true;
-                }
-                //timingEventDone[1] = true;
-                frameLogicCount = 0;
-                
-            }
-            frameLogicCount++;
-
-            //hotbox debug display
-            if (hitboxDisplayNew)
-            {
-                //int i = 0;
-                int k = 0;
-                foreach (GameObject go in listPlayerObject)
-                {
-                    // color player hitbox
-                    if (collisionObject.Count > 0) listHitbox[k].resourceViewSharpDX = ghSharpDX.resourceViewHitboxRed;
-                    else listHitbox[k].resourceViewSharpDX = ghSharpDX.resourceViewHitboxGreen;
-
-                    listHitbox[k].deepCopyFrom(go);
-                    listHitbox[k].size = (go.txPointerH / listHitbox[k].txPointerH) * go.size * go.hitboxFactor;
-                    k++;
-                }
-                
-                foreach (GameObject go in listGameObject)
-                {
-
-                    if (collisionObject.Contains(go))
-                    {
-                        listHitbox[k].resourceViewSharpDX = ghSharpDX.resourceViewHitboxRed;
-                    }
-                    else
-                    {
-                        listHitbox[k].resourceViewSharpDX = ghSharpDX.resourceViewHitboxGreen;
-                    }
-                    listHitbox[k].deepCopyFrom(go);
-                    listHitbox[k].size = (go.txPointerH / listHitbox[k].txPointerH) * go.size * go.hitboxFactor;
-                    k++;
-
-                }
-                foreach (BulletObject bo in listBulletObject)
-                {
-
-                    if (collisionObject.Contains(bo))
-                    {
-                        listHitbox[k].resourceViewSharpDX = ghSharpDX.resourceViewHitboxRed;
-                    }
-                    else
-                    {
-                        listHitbox[k].resourceViewSharpDX = ghSharpDX.resourceViewHitboxGreen;
-                    }
-                    listHitbox[k].deepCopyFrom(bo);
-                    listHitbox[k].size = (bo.txPointerH / listHitbox[k].txPointerH) * bo.size * bo.hitboxFactor;
-                    k++;
-
-                }
-
-
-            }
-
-
+            //Finally, update counter and stuffs
+            frameCountFire++;
         }
 
+        private void updateHitboxData()
+        {
+            foreach (GameObject go in listPlayerObject)
+            {
+                // color player hitbox
+                if (collisionObject.Count > 0) go.hitboxType = 1;
+                else go.hitboxType = 0;
+            }
+            foreach (GameObject go in listGameObject)
+            {
+                if (collisionObject.Contains(go)) go.hitboxType = 1;
+                else go.hitboxType = 0;                
+            }
+            foreach (BulletObject bo in listBulletObject)
+            {
+                if (collisionObject.Contains(bo)) bo.hitboxType = 1;
+                else bo.hitboxType = 0;
+            }
+            foreach (BulletObject bo in listPlayerBulletObject)
+            {
+                bo.hitboxType = 0;
+                foreach (GameObjectDuo god in collisionEnemy)
+                {
+                    if (god.bo.Equals(bo))
+                    {
+                        bo.hitboxType = 2;
+                        god.go.hitboxType = 2;
+                    }
+                }
+            }
+        }
+
+        /*
+        private void updateHitboxData()
+        {
+            //int i = 0;
+            int k = 0;
+            foreach (GameObject go in listPlayerObject)
+            {
+                // color player hitbox
+                if (collisionObject.Count > 0) listHitbox[k].resourceViewSharpDX = ghSharpDX.resourceViewHitboxRed;
+                else listHitbox[k].resourceViewSharpDX = ghSharpDX.resourceViewHitboxGreen;
+
+                listHitbox[k].deepCopyFrom(go);
+                listHitbox[k].size = (go.txPointerH / listHitbox[k].txPointerH) * go.size * go.hitboxFactor;
+                k++;
+            }
+
+            foreach (GameObject go in listGameObject)
+            {
+
+                if (collisionObject.Contains(go))
+                {
+                    listHitbox[k].resourceViewSharpDX = ghSharpDX.resourceViewHitboxRed;
+                }
+                else
+                {
+                    listHitbox[k].resourceViewSharpDX = ghSharpDX.resourceViewHitboxGreen;
+                }
+                listHitbox[k].deepCopyFrom(go);
+                listHitbox[k].size = (go.txPointerH / listHitbox[k].txPointerH) * go.size * go.hitboxFactor;
+                k++;
+
+            }
+            foreach (BulletObject bo in listBulletObject)
+            {
+
+                if (collisionObject.Contains(bo))
+                {
+                    listHitbox[k].resourceViewSharpDX = ghSharpDX.resourceViewHitboxRed;
+                }
+                else
+                {
+                    listHitbox[k].resourceViewSharpDX = ghSharpDX.resourceViewHitboxGreen;
+                }
+                listHitbox[k].deepCopyFrom(bo);
+                listHitbox[k].size = (bo.txPointerH / listHitbox[k].txPointerH) * bo.size * bo.hitboxFactor;
+                k++;
+            }
+            foreach (BulletObject bo in listPlayerBulletObject)
+            {
+                listHitbox[k].deepCopyFrom(bo);
+                listHitbox[k].size = (bo.txPointerH / listHitbox[k].txPointerH) * bo.size * bo.hitboxFactor;
+                k++;
+            }
+        }
+        */
 
         private void checkCollision(GameObject go)
         {
@@ -785,37 +710,66 @@ namespace touhou_test
             }
         }
 
-        private void checkCollisionFull(GameObject go)
+        private void checkCollisionPlayerBullet()
+        {
+            collisionEnemy.Clear();
+
+            // Our player bullet detection with enemies
+            foreach (BulletObject bo in listPlayerBulletObject)
+            {
+                if (bo.isVisible && bo.isActive)
+                {
+                    foreach (GameObject go in listGameObject)
+                    {
+                        if (go.isVisible)
+                        {
+
+                            if (go.collideWith(bo))
+                            {
+                                collisionEnemy.Add(new GameObjectDuo(go, bo));
+                            }
+
+                        }
+
+                    }
+
+                }
+            }
+
+        }
+
+        private void checkCollisionFull(GameObject mainGo)
         {
             collisionObject.Clear();
-            for (int i = 0; i < listGameObject.Count; i++)
+            
+            foreach (GameObject go in listGameObject)
             {
-                if (listGameObject[i].isVisible)
+                if (go.isVisible)
                 {
-                    if (go.collideWith(listGameObject[i]))
+                    if (mainGo.collideWith(go))
                     {
-                        collisionObject.Add(listGameObject[i]);
+                        collisionObject.Add(go);
                     }
                 }
             }
-            for (int i = 0; i < listBulletObject.Count; i++)
+            foreach (BulletObject bo in listBulletObject)
             {
-                if (listBulletObject[i].isVisible && listBulletObject[i].isActive)
+                if (bo.isVisible && bo.isActive)
                 {
                     // real collision 
-                    if (listBulletObject[i].size > 1f && go.collideCircleWith(listBulletObject[i],
-                       ((listBulletObject[i].txPointerW * listBulletObject[i].size * listBulletObject[i].hitboxFactor) / 2f) - 6 ))
+                    if (bo.size > 1f && mainGo.collideCircleWith(bo,
+                       ((bo.txPointerW * bo.size * bo.hitboxFactor) / 2f) - 12))
                     {
-                        collisionObject.Add(listBulletObject[i]);
+                        collisionObject.Add(bo);
                     }
-                    if (listBulletObject[i].size <= 1f && go.collideCircleWith(listBulletObject[i],
-                       ((listBulletObject[i].txPointerW * listBulletObject[i].size * listBulletObject[i].hitboxFactor) / 2f) + 1))
+                    if (bo.size <= 1f && mainGo.collideCircleWith(bo,
+                       ((bo.txPointerW * bo.size * bo.hitboxFactor) / 2f) - 6))
                     {
-                        collisionObject.Add(listBulletObject[i]);
+                        collisionObject.Add(bo);
                     }
                     // grazing
-                    if (go.collideCircleWith(listBulletObject[i],
-                       ((listBulletObject[i].txPointerW * listBulletObject[i].size * listBulletObject[i].hitboxFactor) / 2f) + 6))
+                    if (mainGo.collideCircleWith(bo,
+                       ((bo.txPointerW * bo.size * bo.hitboxFactor) / 2f) + 8))
                     {
                         //collisionObject.Add(listBulletObject[i]);
                     }

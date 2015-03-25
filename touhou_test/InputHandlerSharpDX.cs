@@ -35,11 +35,13 @@ namespace touhou_test
         public bool kCOnce = false;
         public bool kF = false;
         public bool kFOnce = false;
-        public bool kY = false;
-        public bool kX = false;
         public bool kShift = false;
         public bool kH = false;
         public bool kHOnce = false;
+        public bool kY = false;
+        public bool kYOnce = false;
+        public bool kX = false;
+        public bool kXOnce = false;
 
         public InputHandlerSharpDX(Game g)
         {
@@ -210,10 +212,12 @@ namespace touhou_test
             if (e.KeyCode == Keys.Y)
             {
                 kY = false;
+                kYOnce = false;
             }
             if (e.KeyCode == Keys.X)
             {
                 kX = false;
+                kXOnce = false;
             }
             if (e.KeyCode == Keys.ShiftKey)
             {

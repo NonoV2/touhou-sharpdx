@@ -27,12 +27,19 @@ namespace touhou_test
 
         public ShaderResourceView resourceViewMenu;
         public ShaderResourceView resourceViewBackground;
+
         public ShaderResourceView resourceViewMokou;
         public ShaderResourceView resourceViewKaguya;
+
         public ShaderResourceView resourceViewHitboxGreen;
         public ShaderResourceView resourceViewHitboxRed;
+        public ShaderResourceView resourceViewHitboxOrange;
+
         public ShaderResourceView resourceViewFocusHitbox;
         public ShaderResourceView resourceViewBullet00;
+
+        public ShaderResourceView resourceViewPlayerBullet00;
+        public ShaderResourceView resourceViewPlayerBullet01;
 
         public int windowW = 800;
         public int windowH = 600;
@@ -68,19 +75,20 @@ namespace touhou_test
             bsd.RenderTarget[0].IsBlendEnabled = true;
             bsd.RenderTarget[0].RenderTargetWriteMask = ColorWriteMaskFlags.All;
 
-            bsd.RenderTarget[0].SourceBlend = BlendOption.SourceAlpha;
             bsd.RenderTarget[0].BlendOperation = BlendOperation.Add;
+            bsd.RenderTarget[0].SourceBlend = BlendOption.SourceAlpha;
             bsd.RenderTarget[0].DestinationBlend = BlendOption.InverseSourceAlpha;
 
-            bsd.RenderTarget[0].AlphaBlendOperation = BlendOperation.Add;
-            bsd.RenderTarget[0].SourceAlphaBlend = BlendOption.One;
-            bsd.RenderTarget[0].DestinationAlphaBlend = BlendOption.One;
+            //bsd.RenderTarget[0].AlphaBlendOperation = BlendOperation.Minimum;
+            //bsd.RenderTarget[0].SourceAlphaBlend = BlendOption.BlendFactor;
+            //bsd.RenderTarget[0].DestinationAlphaBlend = BlendOption.DestinationAlpha;
 
             //create font from file (generated with tkfont.exe)
             batch = new SharpBatch(device, "font/textfont.dds");
             //batch = new SharpBatch(device, "font/arial64");
 
             bsToolkit = SharpDX.Toolkit.Graphics.BlendState.New(batch.Batch.GraphicsDevice, bsd);
+
             //batch.Batch.GraphicsDevice.SetBlendState(bsToolkit);
             bs = new BlendState(device.Device, bsd);
             //device.DeviceContext.OutputMerger.SetBlendState(bs);
@@ -110,12 +118,19 @@ namespace touhou_test
             {
                 resourceViewMenu = ShaderResourceView.FromFile(device.Device, "img/wallpaper.jpg");
                 resourceViewBackground = ShaderResourceView.FromFile(device.Device, "img/bg_00.png");
+
                 resourceViewMokou = ShaderResourceView.FromFile(device.Device, "img/mokou_00.png");
                 resourceViewKaguya = ShaderResourceView.FromFile(device.Device, "img/kaguya_00.png");
+                resourceViewFocusHitbox = ShaderResourceView.FromFile(device.Device, "img/player_hitbox.png");
+
                 resourceViewHitboxGreen = ShaderResourceView.FromFile(device.Device, "img/hitbox_green.png");
                 resourceViewHitboxRed = ShaderResourceView.FromFile(device.Device, "img/hitbox_red.png");
-                resourceViewFocusHitbox = ShaderResourceView.FromFile(device.Device, "img/player_hitbox.png");
-                resourceViewBullet00 = ShaderResourceView.FromFile(device.Device, "img/bullet_white_8x8.png");
+                resourceViewHitboxOrange = ShaderResourceView.FromFile(device.Device, "img/hitbox_orange.png");
+
+                resourceViewBullet00 = ShaderResourceView.FromFile(device.Device, "img/bullet_kaguya_32x32.png");
+                resourceViewPlayerBullet00 = ShaderResourceView.FromFile(device.Device, "img/bullet_mokou_32x32.png");
+                resourceViewPlayerBullet01 = ShaderResourceView.FromFile(device.Device, "img/bullet_mokou_128x128.png");
+
             }
             catch (Exception ex)
             {
@@ -126,12 +141,38 @@ namespace touhou_test
 
         }
 
-        public void drawGameObject(GameObject go)
+        public void drawGameObject(GameObject go, SharpDX.Color color, bool flipVertically)
         {
             if (go == null) return;
-            if (go.alwaysVisible || go.isVisibleByCamera() && !go.alwaysHidden) go.Draw();
-            else go.updateFinalOriginAndCoord();
+            go.updateFinalOriginAndCoord();
+            if (go.alwaysVisible || go.isVisibleByCamera() && !go.alwaysHidden)
+            {
+                if (flipVertically) go.DrawFlipVertically(color);
+                else go.Draw(color);
+            }
         }
+
+        public void drawBulletObject(BulletObject bo, SharpDX.Color color, bool flipVertically)
+        {
+            if (bo == null) return;
+            bo.updateFinalOriginAndCoord();
+            if (bo.alwaysVisible || bo.isVisibleByCamera() && !bo.alwaysHidden)
+            {
+                if (flipVertically) bo.DrawFlipVertically(color);
+                else bo.Draw(color);
+            }
+        }
+
+        public void drawHitboxObject(GameObject go)
+        {
+            if (go == null) return;
+            go.updateFinalOriginAndCoord();
+            if (go.alwaysVisible || go.isVisibleByCamera() && !go.alwaysHidden)
+            {
+                go.DrawHitbox();
+            }
+        }
+        
 
         public void Dispose() {
 
@@ -148,8 +189,11 @@ namespace touhou_test
             resourceViewKaguya.Dispose();
             resourceViewHitboxGreen.Dispose();
             resourceViewHitboxRed.Dispose();
+            resourceViewHitboxOrange.Dispose();
             resourceViewFocusHitbox.Dispose();
             resourceViewBullet00.Dispose();
+            resourceViewPlayerBullet00.Dispose();
+            resourceViewPlayerBullet01.Dispose();
 
         }
 

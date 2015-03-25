@@ -32,7 +32,7 @@ namespace touhou_test
 
         public void follow()
         {
-            fps = 60; // base.gl.ghSharpDX.fpsCounter.FPS;
+            fps = base.gl.fps; // Original choice of fps is done in GameLogic
 
             //trackPlayerData(pX, pY);
             //if (Math.Abs(base.originX - targetX) < 3f && Math.Abs(base.originY - targetY) < 3f) return;
@@ -57,9 +57,24 @@ namespace touhou_test
                    (base.originY - targetY) * (base.originY - targetY);
         }
 
-        public override void Draw()
+        public override void Draw(SharpDX.Color col)
         {
-            if (isActive) base.Draw();
+            if (isActive) base.Draw(col);
+        }
+
+        public override bool isVisibleByCamera()
+        {
+            isVisible = false;
+            if (originX - gl.cameraOriginX < (gl.ghSharpDX.form.ClientSize.Width + txPointerW * size) &&
+                originX - gl.cameraOriginX > (-gl.ghSharpDX.form.ClientSize.Width - txPointerW * size) &&
+                originY - gl.cameraOriginY < (gl.ghSharpDX.form.ClientSize.Height + txPointerH * size) &&
+                originY - gl.cameraOriginY > (-gl.ghSharpDX.form.ClientSize.Height - txPointerH * size)) isVisible = true;
+            if (!isVisible)
+            {
+                isActive = false;
+            } 
+            return isVisible;
+
         }
 
     }

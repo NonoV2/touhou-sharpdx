@@ -84,7 +84,7 @@ namespace touhou_test
                     ghSharpDX.batch.Resize();
                 }
                 //clear color
-                ghSharpDX.device.Clear(SharpDX.Color.Black);
+                ghSharpDX.device.Clear(SharpDX.Color.Transparent);
                 
                 //update logic
                 gl.logicUpdate();
