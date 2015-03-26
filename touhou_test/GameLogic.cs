@@ -16,10 +16,11 @@ namespace touhou_test
         InputHandlerSharpDX ihSharpDX;
 
         public enum GAMESTATE : int { MENU = 0, PLAYING = 1, DEMO = 2 };
-        public int gameState = (int)GAMESTATE.MENU;
+        public GAMESTATE gameState = GAMESTATE.MENU;
 
         public int fps = 0;
         public int menuOption = 0;
+        public int gameOverMenuOption = 0;
         public int collision = 0;
         public bool hitboxDisplayNew = false;
         public float cameraOriginX = 0;
@@ -36,11 +37,11 @@ namespace touhou_test
         public int playerBulletCount = 0;
         public float bulletDelay = 0f;
 
-        //public List<bool> timingEventDone;
-        //public int frameLogicCount = 0;
-        //public int bulletCount = 0;
-        //public float delay = 0;
-        //public float acceleration = 0;
+        public int lives = 0;
+        public bool isInvincible = false;
+        public int invincibleTimer = 0;
+        public bool gameOver = false;
+        public int score = 0;
 
         public List<GameObject> listBackgroundObject;
 
@@ -48,9 +49,12 @@ namespace touhou_test
         public List<BulletObject> listPlayerBulletObject;
         public List<GameObject> listGameObject;
         public List<BulletObject> listBulletObject;
+        public List<EnemyObject> listEnemyObject;
 
         public List<GameObject> collisionObject;
         public List<GameObjectDuo> collisionEnemy;
+
+        public List<GameObject> lifeUI;
 
         public Level level;
 
@@ -62,8 +66,10 @@ namespace touhou_test
             listPlayerBulletObject.Clear();
             listBackgroundObject.Clear();
             listGameObject.Clear();
+            listEnemyObject.Clear();
             collisionObject.Clear();
             collisionEnemy.Clear();
+            lifeUI.Clear();
 
             // Global variables cleaning
             fps = 0;
@@ -77,6 +83,12 @@ namespace touhou_test
             printHelp = false;
             printHelpLab = false;
             visibleTextureCountIsActive = false;
+            lives = 0;
+            isInvincible = false;
+            invincibleTimer = 0;
+            gameOver = false;
+            gameOverMenuOption = 0;
+            score = 0;
 
             //frameLogicCount = 0;
             //bulletCount = 0;
@@ -104,8 +116,10 @@ namespace touhou_test
             listPlayerBulletObject = new List<BulletObject>();
             listGameObject = new List<GameObject>();
             listBulletObject = new List<BulletObject>();
+            listEnemyObject = new List<EnemyObject>();
             collisionObject = new List<GameObject>();
             collisionEnemy = new List<GameObjectDuo>();
+            lifeUI = new List<GameObject>();
 
             //init levels
             level = new Level(this);
@@ -120,8 +134,14 @@ namespace touhou_test
 
         public void drawAllGameObjects()
         {
-            SharpDX.Color color = new SharpDX.Color(new SharpDX.Vector4(1f, 1f, 1f, 1f));     // last float in vector4 is alpha used for transarency
-            SharpDX.Color colorT75 = new SharpDX.Color(new SharpDX.Vector4(1f, 1f, 1f, 0.75f)); // 75% opacity
+            // Coloring inits and logic
+            float rgb = 1f;
+            if (gameOver) rgb = 0.5f;
+            SharpDX.Color color = new SharpDX.Color(new SharpDX.Vector4(rgb, rgb, rgb, 1f));       // last float in vector4 is alpha used for transarency
+            SharpDX.Color colorT75 = new SharpDX.Color(new SharpDX.Vector4(rgb, rgb, rgb, 0.75f)); // 75% opacity for most bullets
+            SharpDX.Color colorT33 = new SharpDX.Color(new SharpDX.Vector4(rgb, rgb, rgb, 0.33f)); // 33% opacity
+            SharpDX.Color playerColor = color;
+            if (isInvincible) playerColor = colorT33;
 
             //begin drawing
             if (wireframe) ghSharpDX.batch.Batch.Begin(SpriteSortMode.Immediate, ghSharpDX.bsToolkit, ghSharpDX.ssToolkit, null, ghSharpDX.rsToolkitWireframe);
@@ -137,7 +157,8 @@ namespace touhou_test
             }
             foreach (BulletObject bo in listPlayerBulletObject) ghSharpDX.drawBulletObject(bo, colorT75, false);
             foreach (GameObject go in listGameObject) ghSharpDX.drawGameObject(go, color, false);
-            foreach (GameObject go in listPlayerObject) ghSharpDX.drawGameObject(go, color, false);
+            foreach (EnemyObject go in listEnemyObject) ghSharpDX.drawGameObject(go, color, false);
+            foreach (GameObject go in listPlayerObject) ghSharpDX.drawGameObject(go, playerColor, false);
             foreach (BulletObject bo in listBulletObject) ghSharpDX.drawBulletObject(bo, colorT75, false);
             
 
@@ -145,16 +166,24 @@ namespace touhou_test
             {
                 foreach (GameObject go in listPlayerBulletObject) { ghSharpDX.drawHitboxObject(go); }
                 foreach (GameObject go in listGameObject) { ghSharpDX.drawHitboxObject(go); }
+                foreach (GameObject go in listEnemyObject) { ghSharpDX.drawHitboxObject(go); }
                 foreach (GameObject go in listPlayerObject) { ghSharpDX.drawHitboxObject(go); }
                 foreach (GameObject go in listBulletObject) { ghSharpDX.drawHitboxObject(go); }
                 
             }
 
+            if (gameState == GAMESTATE.PLAYING) drawGameUI();
             drawAllText();
 
             //flush text to view
             ghSharpDX.batch.End();
             
+        }
+
+        private void drawGameUI()
+        {
+            SharpDX.Color color = new SharpDX.Color(new SharpDX.Vector4(1f, 1f, 1f, 1f));
+            foreach (GameObject go in lifeUI) ghSharpDX.drawGameObject(go, color, false);
         }
 
         private void drawAllText()
@@ -195,7 +224,7 @@ namespace touhou_test
             if (printFPS)
             {
                 string msg = "FPS: " + ghSharpDX.fpsCounter.FPS + " Current Time " + DateTime.Now.ToString();
-                ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, msg, new SharpDX.Vector2(16 * wFactor, 16 * hFactor), SharpDX.Color.PaleGreen,
+                ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, msg, new SharpDX.Vector2(16 * wFactor, 40 * hFactor), SharpDX.Color.PaleGreen,
                                0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
             }
             if (printHelp)
@@ -230,7 +259,41 @@ namespace touhou_test
                 foreach (GameObject go in listPlayerObject) if (go.isVisible) i++;
                 foreach (GameObject go in listGameObject) if (go.isVisible) i++;
                 string msg = "Number of Rendered Textures: " + i;
-                ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, msg, new SharpDX.Vector2(16 * wFactor, 40 * hFactor), SharpDX.Color.DarkOrchid,
+                ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, msg, new SharpDX.Vector2(16 * wFactor, 64 * hFactor), SharpDX.Color.DarkOrchid,
+                               0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
+            }
+            if (gameOver)
+            {
+                string msg = "Game Over... Continue ?";
+                string yes = "Yes";
+                string no = "No";
+                ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, msg, new SharpDX.Vector2(290 * wFactor, 250 * hFactor), SharpDX.Color.Gray,
+                               0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
+                ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, msg, new SharpDX.Vector2(287 * wFactor, 247 * hFactor), SharpDX.Color.White,
+                               0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
+
+                ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, yes, new SharpDX.Vector2(320 * wFactor, 285 * hFactor), SharpDX.Color.Gray,
+                               0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
+                ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, no, new SharpDX.Vector2(460 * wFactor, 285 * hFactor), SharpDX.Color.Gray,
+                               0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
+                if (gameOverMenuOption == 0)
+                {
+                    ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, yes, new SharpDX.Vector2(317 * wFactor, 282 * hFactor), SharpDX.Color.White,
+                               0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
+                }
+                if (gameOverMenuOption == 1)
+                {
+                    ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, no, new SharpDX.Vector2(457 * wFactor, 282 * hFactor), SharpDX.Color.White,
+                               0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
+                }
+            }
+            if (gameState == GAMESTATE.PLAYING)
+            {
+                //always displayed text
+                string msg = "Score - "+score;
+                ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, msg, new SharpDX.Vector2(19 * wFactor, 19 * hFactor), SharpDX.Color.Black,
+                               0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
+                ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, msg, new SharpDX.Vector2(16 * wFactor, 16 * hFactor), SharpDX.Color.White,
                                0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
             }
         }
@@ -239,13 +302,13 @@ namespace touhou_test
         {
             switch (gameState)
             {
-                case (int)GAMESTATE.MENU:
+                case GAMESTATE.MENU:
                     menuLogicUpdate();
                     break;
-                case (int)GAMESTATE.PLAYING:
+                case GAMESTATE.PLAYING:
                     playingLogicUpdate();
                     break;
-                case (int)GAMESTATE.DEMO:
+                case GAMESTATE.DEMO:
                     demoLogicUpdate();
                     break;
                 default:
@@ -297,12 +360,12 @@ namespace touhou_test
                 cleanGameState();
                 if (menuOption == 0)
                 {
-                    gameState = (int)GAMESTATE.PLAYING;
+                    gameState = GAMESTATE.PLAYING;
                     loadPlayingGameState();
                 }
                 if (menuOption == 1)
                 {
-                    gameState = (int)GAMESTATE.DEMO;
+                    gameState = GAMESTATE.DEMO;
                     loadDemoGameState();
                 }
                 if (menuOption == 2)
@@ -469,13 +532,32 @@ namespace touhou_test
 
         private void loadPlayingGameState()
         {
+            //init variables and futur UI elements
+            lives = 3;
+            for (int i = 0; i < 10; i++)
+            {
+                GameObject go = new GameObject(ghSharpDX.resourceViewLife, this);
+                go.size = 0.5f;
+                go.originX = 160f+(32*i);
+                go.originY = -270f;
+                go.alwaysHidden = true;
+                lifeUI.Add(go);
+            }
+            updateLifeCount();
 
+            //init stage
             level.loadStage01();
 
         }
 
         private void playingLogicUpdate() // TODO: Level Design Implementation for multilevels
         {
+            // GameOver check, prompt user for a choice afterwards
+            if (gameOver)
+            {
+                gameOverLogic();
+                return;
+            }
             // Handling pause the hard way
             if (ihSharpDX.kEscape && !ihSharpDX.kEscapeOnce)
             {
@@ -561,12 +643,14 @@ namespace touhou_test
                         bulletDelay = 1.2f;
                         listPlayerBulletObject[playerBulletCount].speed = 120f;
                         listPlayerBulletObject[playerBulletCount].resourceViewSharpDX = ghSharpDX.resourceViewPlayerBullet01;
+                        listPlayerBulletObject[playerBulletCount].damage = 20;
                     }
                     else
                     {
                         bulletDelay = 0f;
                         listPlayerBulletObject[playerBulletCount].speed = 360f;
                         listPlayerBulletObject[playerBulletCount].resourceViewSharpDX = ghSharpDX.resourceViewPlayerBullet00;
+                        listPlayerBulletObject[playerBulletCount].damage = 10;
                     }
                     listPlayerBulletObject[playerBulletCount].updateTextureSizeDescription();
 
@@ -600,11 +684,15 @@ namespace touhou_test
             //Level Logic
             level.logicStage01();
 
+            //Timers
+            if (invincibleTimer > 3 * fps) isInvincible = false;
+
             //hitbox debug display
             if (hitboxDisplayNew) updateHitboxData();
 
             //Finally, update counter and stuffs
             frameCountFire++;
+            invincibleTimer++;
         }
 
         private void updateHitboxData()
@@ -619,6 +707,11 @@ namespace touhou_test
             {
                 if (collisionObject.Contains(go)) go.hitboxType = 1;
                 else go.hitboxType = 0;                
+            }
+            foreach (EnemyObject eo in listEnemyObject)
+            {
+                if (collisionObject.Contains(eo)) eo.hitboxType = 1;
+                else eo.hitboxType = 0;
             }
             foreach (BulletObject bo in listBulletObject)
             {
@@ -639,61 +732,6 @@ namespace touhou_test
             }
         }
 
-        /*
-        private void updateHitboxData()
-        {
-            //int i = 0;
-            int k = 0;
-            foreach (GameObject go in listPlayerObject)
-            {
-                // color player hitbox
-                if (collisionObject.Count > 0) listHitbox[k].resourceViewSharpDX = ghSharpDX.resourceViewHitboxRed;
-                else listHitbox[k].resourceViewSharpDX = ghSharpDX.resourceViewHitboxGreen;
-
-                listHitbox[k].deepCopyFrom(go);
-                listHitbox[k].size = (go.txPointerH / listHitbox[k].txPointerH) * go.size * go.hitboxFactor;
-                k++;
-            }
-
-            foreach (GameObject go in listGameObject)
-            {
-
-                if (collisionObject.Contains(go))
-                {
-                    listHitbox[k].resourceViewSharpDX = ghSharpDX.resourceViewHitboxRed;
-                }
-                else
-                {
-                    listHitbox[k].resourceViewSharpDX = ghSharpDX.resourceViewHitboxGreen;
-                }
-                listHitbox[k].deepCopyFrom(go);
-                listHitbox[k].size = (go.txPointerH / listHitbox[k].txPointerH) * go.size * go.hitboxFactor;
-                k++;
-
-            }
-            foreach (BulletObject bo in listBulletObject)
-            {
-
-                if (collisionObject.Contains(bo))
-                {
-                    listHitbox[k].resourceViewSharpDX = ghSharpDX.resourceViewHitboxRed;
-                }
-                else
-                {
-                    listHitbox[k].resourceViewSharpDX = ghSharpDX.resourceViewHitboxGreen;
-                }
-                listHitbox[k].deepCopyFrom(bo);
-                listHitbox[k].size = (bo.txPointerH / listHitbox[k].txPointerH) * bo.size * bo.hitboxFactor;
-                k++;
-            }
-            foreach (BulletObject bo in listPlayerBulletObject)
-            {
-                listHitbox[k].deepCopyFrom(bo);
-                listHitbox[k].size = (bo.txPointerH / listHitbox[k].txPointerH) * bo.size * bo.hitboxFactor;
-                k++;
-            }
-        }
-        */
 
         private void checkCollision(GameObject go)
         {
@@ -732,6 +770,23 @@ namespace touhou_test
                         }
 
                     }
+                    foreach (EnemyObject eo in listEnemyObject)
+                    {
+                        if (eo.isVisible)
+                        {
+
+                            if (eo.collideWith(bo))
+                            {
+                                collisionEnemy.Add(new GameObjectDuo(eo, bo));
+                                eo.health = eo.health - bo.damage;
+                                if (bo.damage <= 10) bo.isActive = false;
+                                if (eo.health <= 0) { eo.isActive = false; }
+                                Console.WriteLine("Boss Health: "+eo.health);
+                            }
+
+                        }
+
+                    }
 
                 }
             }
@@ -749,27 +804,34 @@ namespace touhou_test
                     if (mainGo.collideWith(go))
                     {
                         collisionObject.Add(go);
+                        playerLoseLife();
                     }
                 }
             }
+            foreach (EnemyObject eo in listEnemyObject)
+            {
+                if (eo.isVisible)
+                {
+                    if (mainGo.collideWith(eo))
+                    {
+                        collisionObject.Add(eo);
+                        playerLoseLife();
+                    }
+                }
+            }
+
             foreach (BulletObject bo in listBulletObject)
             {
                 if (bo.isVisible && bo.isActive)
                 {
                     // real collision 
-                    if (bo.size > 1f && mainGo.collideCircleWith(bo,
-                       ((bo.txPointerW * bo.size * bo.hitboxFactor) / 2f) - 12))
+                    if (mainGo.collideCircleWith(bo, ((bo.txPointerW * bo.size * bo.hitboxFactor) / 2f) * 0.8f))
                     {
                         collisionObject.Add(bo);
-                    }
-                    if (bo.size <= 1f && mainGo.collideCircleWith(bo,
-                       ((bo.txPointerW * bo.size * bo.hitboxFactor) / 2f) - 6))
-                    {
-                        collisionObject.Add(bo);
+                        playerLoseLife();
                     }
                     // grazing
-                    if (mainGo.collideCircleWith(bo,
-                       ((bo.txPointerW * bo.size * bo.hitboxFactor) / 2f) + 8))
+                    if (mainGo.collideCircleWith(bo, ((bo.txPointerW * bo.size * bo.hitboxFactor) / 2f) * 1.1f))
                     {
                         //collisionObject.Add(listBulletObject[i]);
                     }
@@ -778,7 +840,58 @@ namespace touhou_test
 
         }
 
+        private void playerLoseLife()
+        {
+            if (isInvincible) return;
+            if (lives <= 0) gameOver = true;
+            lives--;
+            invincibleTimer = 0;
+            isInvincible = true;
+            updateLifeCount();
+        }
 
+        private void updateLifeCount()
+        {
+            int i = 0;
+            foreach (GameObject go in lifeUI)
+            {
+                go.alwaysHidden = false;
+                if (i >= lives) go.alwaysHidden = true;
+                i++;
+            }
+        }
+
+        private void gameOverLogic()
+        {
+            if (ihSharpDX.kEnter && !ihSharpDX.kEnterOnce)
+            {
+                ihSharpDX.kEnterOnce = true;
+                if (gameOverMenuOption == 0)
+                {
+                    gameOver = false;
+                    lives = 3;
+                    updateLifeCount();
+                }
+                if (gameOverMenuOption == 1)
+                {
+                    cleanGameState();
+                    gameState = (int)GAMESTATE.MENU;
+                    loadMainMenuGameState();
+                }
+            }
+            if (ihSharpDX.kRight && !ihSharpDX.kRightOnce)
+            {
+                ihSharpDX.kRightOnce = true;
+                gameOverMenuOption++;
+                if (gameOverMenuOption > 1) gameOverMenuOption = 0;
+            }
+            if (ihSharpDX.kLeft && !ihSharpDX.kLeftOnce)
+            {
+                ihSharpDX.kLeftOnce = true;
+                gameOverMenuOption--;
+                if (gameOverMenuOption < 0) gameOverMenuOption = 1;
+            }
+        }
 
     //-----------------------------------END---OF---CLASS---------------------------------------------------------------
     }

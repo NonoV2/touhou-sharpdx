@@ -131,10 +131,12 @@ namespace touhou_test
             float sizeHitbox = (txPointerH / hitboxTextureSize) * size * hitboxFactor;
             float wFactor = (float)gl.ghSharpDX.form.ClientSize.Width / (float)gl.ghSharpDX.windowW;
             float hFactor = (float)gl.ghSharpDX.form.ClientSize.Height / (float)gl.ghSharpDX.windowH;
-            
+            float finalOriginXcopy = finalOriginX - offsetX;
+            float finalOriginYcopy = finalOriginY - offsetY;
+
             gl.ghSharpDX.batch.Batch.Draw(
                 tx, // texture
-                new SharpDX.Vector2(finalOriginX * wFactor + (gl.ghSharpDX.form.ClientSize.Width / 2f), finalOriginY * hFactor + (gl.ghSharpDX.form.ClientSize.Height / 2f)), // position in the screen
+                new SharpDX.Vector2(finalOriginXcopy * wFactor + (gl.ghSharpDX.form.ClientSize.Width / 2f), finalOriginYcopy * hFactor + (gl.ghSharpDX.form.ClientSize.Height / 2f)), // position in the screen
                 //new SharpDX.Vector2(finalOriginX + 400f, finalOriginY + 300f), // position in the screen
                 null, // subpart of the texture as RectangleF
                 new SharpDX.Color(new Vector4(1f,1f,1f,0.40f)), // tint color 40% Alpha
@@ -149,8 +151,8 @@ namespace touhou_test
 
         public void updateFinalOriginAndCoord() {
 
-            finalOriginX = (originX - gl.cameraOriginX) + offsetX;
-            finalOriginY = (originY - gl.cameraOriginY) + offsetY;
+            finalOriginX = (originX - gl.cameraOriginX); // -offsetX;
+            finalOriginY = (originY - gl.cameraOriginY); // -offsetY;
             finalCoordX = coordX * size;
             finalCoordY = coordY * size;
 

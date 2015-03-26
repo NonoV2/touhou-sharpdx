@@ -18,6 +18,7 @@ namespace touhou_test
         public List<BulletObject> listBulletObject;
         public List<GameObject> collisionObject;
         public List<BulletObject> listPlayerBulletObject;
+        public List<EnemyObject> listEnemyObject;
 
         public List<bool> timingEventDone;
         public int frameLogicCount = 0;
@@ -35,6 +36,7 @@ namespace touhou_test
             this.listPlayerObject = gl.listPlayerObject;
             this.collisionObject = gl.collisionObject;
             this.listPlayerBulletObject = gl.listPlayerBulletObject;
+            this.listEnemyObject = gl.listEnemyObject;
             
             //inits
             timingEventDone = new List<bool>();
@@ -63,12 +65,14 @@ namespace touhou_test
             listPlayerObject[1].hitboxFactor = 0.33f;
 
             //enemy
-            listGameObject.Add(new GameObject(ghSharpDX.resourceViewKaguya, gl));
-            listGameObject[0].size = 0.5f;
-            listGameObject[0].hitboxFactor = 0.4f;
-            listGameObject[0].offsetY = -8;
-            listGameObject[0].originX = 0f;
-            listGameObject[0].originY = -500f;
+            listEnemyObject.Add(new EnemyObject(ghSharpDX.resourceViewKaguya, gl));
+            listEnemyObject[0].size = 0.5f;
+            listEnemyObject[0].hitboxFactor = 0.4f;
+            listEnemyObject[0].offsetY = -8;
+            listEnemyObject[0].originX = 0f;
+            listEnemyObject[0].originY = -500f;
+            listEnemyObject[0].health = 10000;
+            listEnemyObject[0].type = EnemyObject.ENEMYTYPE.BOSS;
 
             //bullets
             for (int i = 0; i < 2000; i++)
@@ -121,16 +125,17 @@ namespace touhou_test
             //Timing Logic - Level design
             if (!timingEventDone[0] && frameLogicCount > 1 * fps)
             {
-                //listGameObject[0].originX = 0f;
-                listGameObject[0].originY = listGameObject[0].originY + ((100f - acceleration) / fps);
-                if (listGameObject[0].originY > -200)
+                //listEnemyObject[0].originX = 0f;
+                listEnemyObject[0].isActive = true;
+                listEnemyObject[0].originY = listEnemyObject[0].originY + ((100f - acceleration) / fps);
+                if (listEnemyObject[0].originY > -200)
                 {
-                    listGameObject[0].originY = -200;
+                    listEnemyObject[0].originY = -200;
                     timingEventDone[0] = true;
                     frameLogicCount = 0;
                     acceleration = 0f;
                 }
-                if (listGameObject[0].originY > -250)
+                if (listEnemyObject[0].originY > -250)
                 {
                     acceleration = acceleration + (100f / fps);
                     if (acceleration > 80f) { acceleration = 90f; }
@@ -147,8 +152,8 @@ namespace touhou_test
                 int bulletBatch = 20;
                 for (int i = 0; i < bulletBatch; i++)
                 {
-                    listBulletObject[bulletCount + i].originX = listGameObject[0].originX - (20 * bulletBatch) + (i * 4 * bulletBatch);
-                    listBulletObject[bulletCount + i].originY = listGameObject[0].originY - 30;
+                    listBulletObject[bulletCount + i].originX = listEnemyObject[0].originX - (20 * bulletBatch) + (i * 4 * bulletBatch);
+                    listBulletObject[bulletCount + i].originY = listEnemyObject[0].originY - 30;
                     listBulletObject[bulletCount + i].trackPlayerData(listPlayerObject[1].originX - (20 * bulletBatch) + (i * 4 * bulletBatch), listPlayerObject[1].originY);
                     listBulletObject[bulletCount + i].isActive = true;
                     listBulletObject[bulletCount + i].size = 2f;
@@ -180,10 +185,12 @@ namespace touhou_test
                 else
                 {
                     bulletCount = 0;
-                    //delay = 0.5f;
-                    //timingEventDone[1] = true;
                 }
-                //timingEventDone[1] = true;
+                if (listEnemyObject[0].health <= 0)
+                {
+                    timingEventDone[2] = true;
+                    bulletCount = 0;
+                } 
                 frameLogicCount = 0;
 
             }

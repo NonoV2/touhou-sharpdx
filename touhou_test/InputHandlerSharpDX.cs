@@ -14,7 +14,9 @@ namespace touhou_test
         public bool kUp = false;
         public bool kUpOnce = false;
         public bool kRight = false;
+        public bool kRightOnce = false;
         public bool kLeft = false;
+        public bool kLeftOnce = false;
         public bool kPlus = false;
         public bool kPlusOnce = false;
         public bool kMinus = false;
@@ -149,10 +151,12 @@ namespace touhou_test
             if (e.KeyCode == Keys.Right)
             {
                 kRight = false;
+                kRightOnce = false;
             }
             if (e.KeyCode == Keys.Left)
             {
                 kLeft = false;
+                kLeftOnce = false;
             }
             if (e.KeyCode == Keys.Down)
             {

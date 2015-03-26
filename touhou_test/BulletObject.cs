@@ -18,6 +18,7 @@ namespace touhou_test
         float vectorY = 0f;
         float norm = 0f;
         int fps = 60;
+        public int damage = 0;
 
         public BulletObject(ShaderResourceView resourceView, GameLogic gl) : base(resourceView, gl)
         {

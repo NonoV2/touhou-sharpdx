@@ -41,6 +41,8 @@ namespace touhou_test
         public ShaderResourceView resourceViewPlayerBullet00;
         public ShaderResourceView resourceViewPlayerBullet01;
 
+        public ShaderResourceView resourceViewLife;
+
         public int windowW = 800;
         public int windowH = 600;
 
@@ -131,6 +133,8 @@ namespace touhou_test
                 resourceViewPlayerBullet00 = ShaderResourceView.FromFile(device.Device, "img/bullet_mokou_32x32.png");
                 resourceViewPlayerBullet01 = ShaderResourceView.FromFile(device.Device, "img/bullet_mokou_128x128.png");
 
+                resourceViewLife = ShaderResourceView.FromFile(device.Device, "img/life64x64.png");
+
             }
             catch (Exception ex)
             {
@@ -194,6 +198,7 @@ namespace touhou_test
             resourceViewBullet00.Dispose();
             resourceViewPlayerBullet00.Dispose();
             resourceViewPlayerBullet01.Dispose();
+            resourceViewLife.Dispose();
 
         }
 

@@ -7,17 +7,17 @@ using SharpDX.Direct3D11;
 
 namespace touhou_test
 {
-    class EnemyObject : GameObject
+    class EnemyObject : BulletObject
     {
 
-        int type = 0;
-        int health = 0;
+        public enum ENEMYTYPE : int {NORMAL = 0, BOSS = 1, MINION = 2}
+        public ENEMYTYPE type = ENEMYTYPE.NORMAL;
+        public int health = 0;
 
         public EnemyObject(ShaderResourceView resourceView, GameLogic gl) : base(resourceView, gl)
         {
             
         }
-
 
 
     }
