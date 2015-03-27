@@ -66,10 +66,10 @@ namespace touhou_test
         public override bool isVisibleByCamera()
         {
             isVisible = false;
-            if (originX - gl.cameraOriginX < (gl.ghSharpDX.form.ClientSize.Width + txPointerW * size) &&
-                originX - gl.cameraOriginX > (-gl.ghSharpDX.form.ClientSize.Width - txPointerW * size) &&
-                originY - gl.cameraOriginY < (gl.ghSharpDX.form.ClientSize.Height + txPointerH * size) &&
-                originY - gl.cameraOriginY > (-gl.ghSharpDX.form.ClientSize.Height - txPointerH * size)) isVisible = true;
+            if (originX - gl.cameraOriginX < (gl.ghSharpDX.form.ClientSize.Width + txPointerW * size) / 2f &&
+                originX - gl.cameraOriginX > (-gl.ghSharpDX.form.ClientSize.Width - txPointerW * size) / 2f &&
+                originY - gl.cameraOriginY < (gl.ghSharpDX.form.ClientSize.Height + txPointerH * size) / 2f &&
+                originY - gl.cameraOriginY > (-gl.ghSharpDX.form.ClientSize.Height - txPointerH * size) / 2f) isVisible = true;
             if (!isVisible)
             {
                 isActive = false;

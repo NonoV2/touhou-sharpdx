@@ -25,6 +25,7 @@ namespace touhou_test
         public int bulletCount = 0;
         public float delay = 0;
         public float acceleration = 0;
+        public bool stageNameIsVisible = true;
 
         public Level(GameLogic gl)
         {
@@ -64,15 +65,9 @@ namespace touhou_test
             listPlayerObject.Add(new GameObject(ghSharpDX.resourceViewFocusHitbox, gl));
             listPlayerObject[1].hitboxFactor = 0.33f;
 
-            //enemy
-            listEnemyObject.Add(new EnemyObject(ghSharpDX.resourceViewKaguya, gl));
-            listEnemyObject[0].size = 0.5f;
-            listEnemyObject[0].hitboxFactor = 0.4f;
-            listEnemyObject[0].offsetY = -8;
-            listEnemyObject[0].originX = 0f;
-            listEnemyObject[0].originY = -500f;
-            listEnemyObject[0].health = 10000;
-            listEnemyObject[0].type = EnemyObject.ENEMYTYPE.BOSS;
+            //enemies base init
+            for (int i = 0; i < 100; i++ ) listEnemyObject.Add(new EnemyObject(ghSharpDX.resourceViewKaguya, gl));
+
 
             //bullets
             for (int i = 0; i < 2000; i++)
@@ -89,85 +84,130 @@ namespace touhou_test
                 listPlayerBulletObject.Add(bo);
             }
 
-
-            // hitbox base data creation + original object final coords update
-            /*
-            foreach (GameObject go in listPlayerObject)
-            {
-                GameObject newGo = new GameObject(ghSharpDX.resourceViewHitboxGreen, gl);
-                listHitbox.Add(newGo);
-            }
-            foreach (GameObject go in listGameObject)
-            {
-                GameObject newGo = new GameObject(ghSharpDX.resourceViewHitboxGreen, gl);
-                listHitbox.Add(newGo);
-            }
-            foreach (BulletObject bo in listBulletObject)
-            {
-                GameObject newGo = new GameObject(ghSharpDX.resourceViewHitboxGreen, gl);
-                newGo.alwaysHidden = true;
-                listHitbox.Add(newGo);
-            }
-            foreach (BulletObject bo in listPlayerBulletObject)
-            {
-                GameObject newGo = new GameObject(ghSharpDX.resourceViewHitboxGreen, gl);
-                //newGo.alwaysHidden = true;
-                listHitbox.Add(newGo);
-            }
-            */
         }
 
         public void logicStage01() {
 
             //Regular Updates
+            frameLogicCount++;
             int fps = gl.fps;
 
             //Timing Logic - Level design
-            if (!timingEventDone[0] && frameLogicCount > 1 * fps)
+
+            int firstWave = 16;
+            if (!timingEventDone[0] && frameLogicCount > 5 * fps) //init first enemies
             {
-                //listEnemyObject[0].originX = 0f;
-                listEnemyObject[0].isActive = true;
-                listEnemyObject[0].originY = listEnemyObject[0].originY + ((100f - acceleration) / fps);
-                if (listEnemyObject[0].originY > -200)
+                stageNameIsVisible = false;
+
+                for (int i = 0; i < firstWave; i++)
                 {
-                    listEnemyObject[0].originY = -200;
-                    timingEventDone[0] = true;
+                    listEnemyObject[i].size = 0.5f;
+                    listEnemyObject[i].hitboxFactor = 0.4f;
+                    listEnemyObject[i].offsetY = -8;
+                    listEnemyObject[i].originX = -250f;
+                    listEnemyObject[i].originY = -500f - (i*40f);
+                    listEnemyObject[i].health = 1;
+                    listEnemyObject[i].state = 0;
+                    listEnemyObject[i].speed = 100f;
+                    listEnemyObject[i].type = EnemyObject.ENEMYTYPE.NORMAL;
+                    listEnemyObject[i].isActive = true;
+                    listEnemyObject[i].isAlive = true;
+                }
+                timingEventDone[0] = true;
+            }
+
+            if (timingEventDone[0] && !timingEventDone[1])
+            {
+                for (int i = 0; i < firstWave; i++)
+                {
+                    listEnemyObject[i].isActive = listEnemyObject[i].isAlive;
+                    if (listEnemyObject[i].state == 0)
+                    {
+                        listEnemyObject[i].trackAndFollow(-250f, listEnemyObject[i].originY+10f);
+                    }
+                    if (listEnemyObject[i].state == 1)
+                    {
+                        listEnemyObject[i].trackAndFollow(250f, -150f);
+                    }
+                    if (listEnemyObject[i].state == 2)
+                    {
+                        listEnemyObject[i].trackAndFollow(250f, listEnemyObject[i].originY+10f);
+                    }
+
+                    if (listEnemyObject[i].state == 0 && listEnemyObject[i].originY > 200f)
+                    {
+                        listEnemyObject[i].state = 1;
+                    }
+                    if (listEnemyObject[i].state == 1 && listEnemyObject[i].originX >= 250f)
+                    {
+                        listEnemyObject[i].state = 2;
+                    }
+                }
+   
+            }           
+
+            
+            if (!timingEventDone[19] && frameLogicCount > 21 * fps) // X seconds before boss spawns
+            {
+                //Reset Global Variables
+                acceleration = 0;
+                bulletCount = 0;
+                frameLogicCount = 0;
+
+                //Boss initialization
+                listEnemyObject[50].size = 1f;
+                listEnemyObject[50].hitboxFactor = 0.4f;
+                listEnemyObject[50].offsetY = -16;
+                listEnemyObject[50].originX = 0f;
+                listEnemyObject[50].originY = -500f;
+                listEnemyObject[50].health = 10000;
+                listEnemyObject[50].type = EnemyObject.ENEMYTYPE.BOSS;
+                listEnemyObject[50].isActive = true;
+                listEnemyObject[50].isAlive = true;
+
+                //Event completed
+                timingEventDone[19] = true;
+                
+            }
+            if (timingEventDone[19] && !timingEventDone[20])
+            {
+                listEnemyObject[50].isActive = listEnemyObject[50].isAlive;
+                listEnemyObject[50].originY = listEnemyObject[50].originY + ((100f - acceleration) / fps);
+                if (listEnemyObject[50].originY > -200)
+                {
+                    listEnemyObject[50].originY = -200;
+                    timingEventDone[20] = true;
                     frameLogicCount = 0;
                     acceleration = 0f;
                 }
-                if (listEnemyObject[0].originY > -250)
+                if (listEnemyObject[50].originY > -250)
                 {
                     acceleration = acceleration + (100f / fps);
                     if (acceleration > 80f) { acceleration = 90f; }
                 }
 
             }
-            if (timingEventDone[0] && !timingEventDone[1] && frameLogicCount > 1.75f * fps)
+            if (timingEventDone[20] && !timingEventDone[21] && frameLogicCount > 1.75f * fps)
             {
-                timingEventDone[1] = true;
+                timingEventDone[21] = true;
                 frameLogicCount = 0;
             }
-            if (timingEventDone[1] && !timingEventDone[2] && frameLogicCount > (0.5f + delay) * fps)
+            if (timingEventDone[21] && !timingEventDone[22] && frameLogicCount > (0.5f + delay) * fps)
             {
+                frameLogicCount = 0;
                 int bulletBatch = 20;
                 for (int i = 0; i < bulletBatch; i++)
                 {
-                    listBulletObject[bulletCount + i].originX = listEnemyObject[0].originX - (20 * bulletBatch) + (i * 4 * bulletBatch);
-                    listBulletObject[bulletCount + i].originY = listEnemyObject[0].originY - 30;
+                    listBulletObject[bulletCount + i].originX = listEnemyObject[50].originX - (20 * bulletBatch) + (i * 4 * bulletBatch);
+                    listBulletObject[bulletCount + i].originY = listEnemyObject[50].originY - 30;
                     listBulletObject[bulletCount + i].trackPlayerData(listPlayerObject[1].originX - (20 * bulletBatch) + (i * 4 * bulletBatch), listPlayerObject[1].originY);
                     listBulletObject[bulletCount + i].isActive = true;
                     listBulletObject[bulletCount + i].size = 2f;
                     listBulletObject[bulletCount + i].speed = 60f;
                 }
 
-                //if ((bulletCount / bulletBatch) % 10 == 9)
-                //{
-                    delay = 1.5f;
-                //}
-                //else
-                //{
-                //    delay = 0f;
-                //}
+                delay = 1.5f;
+
                 if ((bulletCount / bulletBatch) % 20 > 9)
                 {
                     delay = 0f;
@@ -186,17 +226,28 @@ namespace touhou_test
                 {
                     bulletCount = 0;
                 }
-                if (listEnemyObject[0].health <= 0)
-                {
-                    timingEventDone[2] = true;
-                    bulletCount = 0;
-                } 
-                frameLogicCount = 0;
-
             }
-            frameLogicCount++;
+            if (timingEventDone[21] && !timingEventDone[22] && listEnemyObject[50].health <= 0)
+            {
+                //forgotten, cleaning
+                timingEventDone[1] = true;
+
+                //new, must be done
+                bulletCount = 0;
+                clearAllBullets();
+                timingEventDone[22] = true;
+                frameLogicCount = 0;
+            }
         
+
+
         }
+
+        private void clearAllBullets() //TODO: Add explosion SFX or animation later on...
+        {
+            foreach (BulletObject bo in listBulletObject) bo.isActive = false;
+        }
+
 
     }
 }

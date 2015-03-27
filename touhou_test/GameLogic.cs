@@ -21,13 +21,14 @@ namespace touhou_test
         public int fps = 0;
         public int menuOption = 0;
         public int gameOverMenuOption = 0;
+        public int pauseMenuOption = 0;
         public int collision = 0;
         public bool hitboxDisplayNew = false;
         public float cameraOriginX = 0;
         public float cameraOriginY = 0;
         public bool printFPS = false;
         public bool wireframe = false;
-        public bool printHelp = false;
+        public bool pause = false;
         public bool printHelpLab = false;
         public bool visibleTextureCountIsActive = false;
 
@@ -42,6 +43,9 @@ namespace touhou_test
         public int invincibleTimer = 0;
         public bool gameOver = false;
         public int score = 0;
+        public float fadingLevel = 0f;
+        public bool fadingUp = true;
+        public bool darkVision = false;
 
         public List<GameObject> listBackgroundObject;
 
@@ -80,7 +84,7 @@ namespace touhou_test
             printFPS = false;
             wireframe = false;
             focus = false;
-            printHelp = false;
+            pause = false;
             printHelpLab = false;
             visibleTextureCountIsActive = false;
             lives = 0;
@@ -89,6 +93,10 @@ namespace touhou_test
             gameOver = false;
             gameOverMenuOption = 0;
             score = 0;
+            fadingLevel = 0f;
+            fadingUp = true;
+            darkVision = false;
+            pauseMenuOption = 0;
 
             //frameLogicCount = 0;
             //bulletCount = 0;
@@ -136,7 +144,7 @@ namespace touhou_test
         {
             // Coloring inits and logic
             float rgb = 1f;
-            if (gameOver) rgb = 0.5f;
+            if (gameOver || darkVision) rgb = 0.5f;
             SharpDX.Color color = new SharpDX.Color(new SharpDX.Vector4(rgb, rgb, rgb, 1f));       // last float in vector4 is alpha used for transarency
             SharpDX.Color colorT75 = new SharpDX.Color(new SharpDX.Vector4(rgb, rgb, rgb, 0.75f)); // 75% opacity for most bullets
             SharpDX.Color colorT33 = new SharpDX.Color(new SharpDX.Vector4(rgb, rgb, rgb, 0.33f)); // 33% opacity
@@ -166,7 +174,7 @@ namespace touhou_test
             {
                 foreach (GameObject go in listPlayerBulletObject) { ghSharpDX.drawHitboxObject(go); }
                 foreach (GameObject go in listGameObject) { ghSharpDX.drawHitboxObject(go); }
-                foreach (GameObject go in listEnemyObject) { ghSharpDX.drawHitboxObject(go); }
+                foreach (EnemyObject eo in listEnemyObject) { ghSharpDX.drawHitboxObject(eo); }
                 foreach (GameObject go in listPlayerObject) { ghSharpDX.drawHitboxObject(go); }
                 foreach (GameObject go in listBulletObject) { ghSharpDX.drawHitboxObject(go); }
                 
@@ -192,6 +200,7 @@ namespace touhou_test
             float hFactor = (float)ghSharpDX.form.ClientSize.Height / (float)ghSharpDX.windowH;
             float fontMul = 1f;
             SharpDX.Vector2 fontSize = new SharpDX.Vector2(wFactor * fontMul, hFactor * fontMul);
+            fps = ghSharpDX.fpsCounter.FPS;
 
             if (gameState == (int)GAMESTATE.MENU)
             {
@@ -223,20 +232,44 @@ namespace touhou_test
             }
             if (printFPS)
             {
-                string msg = "FPS: " + ghSharpDX.fpsCounter.FPS + " Current Time " + DateTime.Now.ToString();
+                string msg = "FPS: " + fps + " Current Time " + DateTime.Now.ToString();
                 ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, msg, new SharpDX.Vector2(16 * wFactor, 40 * hFactor), SharpDX.Color.PaleGreen,
                                0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
             }
-            if (printHelp)
+            if (pause)
             {
-                string msg = "--- Pause & Help --- \n" +
+                string msg = "--- Help --- \n" +
                              "Toggle Pause/Help - Esc \n" +
                              "Focus - Hold Shift \n" +
                              "Toggle FPS and Time - F \n" +
                              "Toggle Hitboxes - Num5 \n" +
-                             "Return To Title Screen - Enter";                
+                             "Return To Title Screen - Enter";
                 ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, msg, new SharpDX.Vector2(16 * wFactor, 430 * hFactor), SharpDX.Color.White,
                                0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
+
+                string pauseString = "--- PAUSE ---";
+                string resume = "Resume";
+                string quit = "Quit";
+                ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, pauseString, new SharpDX.Vector2(330 * wFactor, 250 * hFactor), SharpDX.Color.Gray,
+                               0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
+                ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, pauseString, new SharpDX.Vector2(327 * wFactor, 247 * hFactor), SharpDX.Color.White,
+                               0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
+
+                ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, resume, new SharpDX.Vector2(300 * wFactor, 285 * hFactor), SharpDX.Color.Gray,
+                               0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
+                ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, quit, new SharpDX.Vector2(440 * wFactor, 285 * hFactor), SharpDX.Color.Gray,
+                               0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
+                if (pauseMenuOption == 0)
+                {
+                    ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, resume, new SharpDX.Vector2(297 * wFactor, 282 * hFactor), SharpDX.Color.White,
+                               0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
+                }
+                if (pauseMenuOption == 1)
+                {
+                    ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, quit, new SharpDX.Vector2(437 * wFactor, 282 * hFactor), SharpDX.Color.White,
+                               0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
+                }
+
             }
             if (printHelpLab)
             {
@@ -295,6 +328,22 @@ namespace touhou_test
                                0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
                 ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, msg, new SharpDX.Vector2(16 * wFactor, 16 * hFactor), SharpDX.Color.White,
                                0, new SharpDX.Vector2(0, 0), fontSize, SpriteEffects.None, 0f);
+
+                //specific moments texts, like level intro, etc
+                if (level.stageNameIsVisible)
+                {
+                    fadingLevel = fadingLevel + (0.25f / (float)fps);
+                    if (fadingLevel >= 1f) fadingLevel = 1f;
+
+                    string levelName = "Level One";
+                    SharpDX.Color fadingBlack = new SharpDX.Color(new SharpDX.Vector4(0f, 0f, 0f, 1f-fadingLevel));
+                    SharpDX.Color fadingWhite = new SharpDX.Color(new SharpDX.Vector4(1f, 1f, 1f, 1f-fadingLevel));
+
+                    ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, levelName, new SharpDX.Vector2(310 * wFactor, 240 * hFactor), fadingBlack,
+                               0, new SharpDX.Vector2(0, 0), fontSize*2f, SpriteEffects.None, 0f);
+                    ghSharpDX.batch.Batch.DrawString(ghSharpDX.batch.Font, levelName, new SharpDX.Vector2(305 * wFactor, 235 * hFactor), fadingWhite,
+                                   0, new SharpDX.Vector2(0, 0), fontSize*2f, SpriteEffects.None, 0f);
+                }
             }
         }
 
@@ -354,9 +403,10 @@ namespace touhou_test
                 if (menuOption > 2) menuOption = 0;
             }
 
-            if (ihSharpDX.kEnter && !ihSharpDX.kEnterOnce)
+            if (ihSharpDX.kEnter && !ihSharpDX.kEnterOnce || ihSharpDX.kY && !ihSharpDX.kYOnce)
             {
                 ihSharpDX.kEnterOnce = true;
+                ihSharpDX.kYOnce = true;
                 cleanGameState();
                 if (menuOption == 0)
                 {
@@ -559,27 +609,25 @@ namespace touhou_test
                 return;
             }
             // Handling pause the hard way
+            if (pause) if (pauseLogic()) return; // if quit is selected, no bother finishing the method
             if (ihSharpDX.kEscape && !ihSharpDX.kEscapeOnce)
             {
                 ihSharpDX.kEscapeOnce = true;
-                printHelp = !printHelp;
+                pause = !pause;
+                pauseMenuOption = 0;
             }
-            if (ihSharpDX.kEnter && !ihSharpDX.kEnterOnce)
-            {
-                ihSharpDX.kEnterOnce = true;
-                if (printHelp)
-                {
-                    cleanGameState();
-                    gameState = (int)GAMESTATE.MENU;
-                    loadMainMenuGameState();
-                    return;
-                }
-            }
-            if (printHelp) return; 
+            if (pause) return;
+
+            //Update counter and stuffs
+            frameCountFire++;
+            invincibleTimer++;
 
             //Global Logic
             checkCollisionFull(listPlayerObject[1]);
             checkCollisionPlayerBullet();
+            if (invincibleTimer > 0.1 * fps) darkVision = false;
+            if (invincibleTimer > 3 * fps) isInvincible = false;
+            
 
             //Initial Variables
             float playerSpeed = 240f;
@@ -684,16 +732,12 @@ namespace touhou_test
             //Level Logic
             level.logicStage01();
 
-            //Timers
-            if (invincibleTimer > 3 * fps) isInvincible = false;
-
             //hitbox debug display
             if (hitboxDisplayNew) updateHitboxData();
 
-            //Finally, update counter and stuffs
-            frameCountFire++;
-            invincibleTimer++;
+
         }
+
 
         private void updateHitboxData()
         {
@@ -772,7 +816,7 @@ namespace touhou_test
                     }
                     foreach (EnemyObject eo in listEnemyObject)
                     {
-                        if (eo.isVisible)
+                        if (eo.isVisible && eo.isActive)
                         {
 
                             if (eo.collideWith(bo))
@@ -780,8 +824,19 @@ namespace touhou_test
                                 collisionEnemy.Add(new GameObjectDuo(eo, bo));
                                 eo.health = eo.health - bo.damage;
                                 if (bo.damage <= 10) bo.isActive = false;
-                                if (eo.health <= 0) { eo.isActive = false; }
-                                Console.WriteLine("Boss Health: "+eo.health);
+                                if (eo.health <= 0)
+                                {
+                                    eo.isActive = false;
+                                    eo.isAlive = false;
+                                    score = score + 100;
+                                    if (eo.type == EnemyObject.ENEMYTYPE.BOSS)
+                                    {
+                                        score = score + 2400;
+                                        isInvincible = true;
+                                        invincibleTimer = 2 * fps;
+                                    }
+                                }
+                                Console.WriteLine("State: "+eo.state+" Type: "+eo.type+" Health: "+eo.health);
                             }
 
                         }
@@ -810,7 +865,7 @@ namespace touhou_test
             }
             foreach (EnemyObject eo in listEnemyObject)
             {
-                if (eo.isVisible)
+                if (eo.isVisible && eo.isActive)
                 {
                     if (mainGo.collideWith(eo))
                     {
@@ -847,6 +902,7 @@ namespace touhou_test
             lives--;
             invincibleTimer = 0;
             isInvincible = true;
+            darkVision = true;
             updateLifeCount();
         }
 
@@ -863,9 +919,10 @@ namespace touhou_test
 
         private void gameOverLogic()
         {
-            if (ihSharpDX.kEnter && !ihSharpDX.kEnterOnce)
+            if (ihSharpDX.kEnter && !ihSharpDX.kEnterOnce || ihSharpDX.kY && !ihSharpDX.kYOnce)
             {
                 ihSharpDX.kEnterOnce = true;
+                ihSharpDX.kYOnce = true;
                 if (gameOverMenuOption == 0)
                 {
                     gameOver = false;
@@ -891,6 +948,40 @@ namespace touhou_test
                 gameOverMenuOption--;
                 if (gameOverMenuOption < 0) gameOverMenuOption = 1;
             }
+        }
+
+        private bool pauseLogic()
+        {
+            if (ihSharpDX.kEnter && !ihSharpDX.kEnterOnce || ihSharpDX.kY && !ihSharpDX.kYOnce)
+            {
+                ihSharpDX.kEnterOnce = true;
+                ihSharpDX.kYOnce = true;
+                ihSharpDX.kY = false; //bugfix for shooting bullet when resuming. not clean, but works
+                if (pauseMenuOption == 0)
+                {
+                    pause = !pause;
+                }
+                if (pauseMenuOption == 1)
+                {
+                    cleanGameState();
+                    gameState = (int)GAMESTATE.MENU;
+                    loadMainMenuGameState();
+                    return true;
+                }
+            }
+            if (ihSharpDX.kRight && !ihSharpDX.kRightOnce)
+            {
+                ihSharpDX.kRightOnce = true;
+                pauseMenuOption++;
+                if (pauseMenuOption > 1) pauseMenuOption = 0;
+            }
+            if (ihSharpDX.kLeft && !ihSharpDX.kLeftOnce)
+            {
+                ihSharpDX.kLeftOnce = true;
+                pauseMenuOption--;
+                if (pauseMenuOption < 0) pauseMenuOption = 1;
+            }
+            return false;
         }
 
     //-----------------------------------END---OF---CLASS---------------------------------------------------------------

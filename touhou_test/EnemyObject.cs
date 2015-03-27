@@ -13,6 +13,8 @@ namespace touhou_test
         public enum ENEMYTYPE : int {NORMAL = 0, BOSS = 1, MINION = 2}
         public ENEMYTYPE type = ENEMYTYPE.NORMAL;
         public int health = 0;
+        public int state = 0;
+        public bool isAlive = false;
 
         public EnemyObject(ShaderResourceView resourceView, GameLogic gl) : base(resourceView, gl)
         {

@@ -176,6 +176,16 @@ namespace touhou_test
                 go.DrawHitbox();
             }
         }
+
+        public void drawHitboxObject(EnemyObject eo)
+        {
+            if (eo == null) return;
+            eo.updateFinalOriginAndCoord();
+            if (eo.alwaysVisible || eo.isVisibleByCamera() && !eo.alwaysHidden && eo.isActive)
+            {
+                eo.DrawHitbox();
+            }
+        }
         
 
         public void Dispose() {
